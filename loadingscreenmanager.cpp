@@ -8,16 +8,11 @@ LoadingScreenManager::LoadingScreenManager(QObject *parent)
     qInfo() << this << "Constructed";
 }
 
-void LoadingScreenManager::journalManagerComplete()
-{
-    this->m_done++;
-    this->isDone();
-}
-
 void LoadingScreenManager::supabaseClientCompleted()
 {
     this->m_done++;
     this->isDone();
+    qInfo() << "yes2";
 }
 
 void LoadingScreenManager::isDone()

@@ -10,11 +10,21 @@ Window {
     id: root
     width: 1920
     height: 1080
-    visible: false
+    visible: true
     color: "#00000000"
     title: "Explorarium"
 
+    onClosing: (close) => { // qt is super whiny and this exists and works properly
+                   Qt.quit()
+               }
+
     property string appVersion: applicationVersion
+
+    Binding {
+        target: CategoryProxy
+        property: "cmdrName"
+        value: JournalManager.cmdrName
+    }
 
     Connections {
         target: loadingScreenManager
@@ -47,16 +57,38 @@ Window {
         source: "fonts/Lora-VariableFont_wght.ttf"
     }
 
+    SettingRecordsPopup {
+        id: settingsPopup
+        width: parent.width * 0.5
+        height: parent.height * 0.6
+        anchors.centerIn: parent
+    }
+
+    GalaxyMapPopup {
+        id: galaxyMapPopup
+        width: parent.width
+        height: parent.height
+        anchors.centerIn: parent
+
+        onRequestSystemView: (systemName) => {
+                                 console.log("Main received request for: " + systemName)
+                                 var dataObj = SupabaseClient.getSystem(systemName)
+                                 systemViewPopup.systemData = dataObj
+                                 systemViewPopup.open()
+                             }
+    }
+
     SystemViewPopup {
         id: systemViewPopup
         anchors.centerIn: parent
 
         onRequestEdit: (data) => {
-            field.text = data.title
-            thustheotherfieldlieshere.text = data.description
-            editInfoPopup.systemData = data
-            editInfoPopup.open()
-        }
+                           field.text = data.title
+                           thustheotherfieldlieshere.text = data.description
+                           editInfoPopup.systemData = data
+                           editInfoPopup.open()
+                       }
+        z: 1
     }
 
     Popup {
@@ -65,7 +97,9 @@ Window {
         height: parent.height * 0.4
         anchors.centerIn: parent
         modal: true
-        z: 2
+        focus: true
+        dim: true
+        z: 5
 
         enter: Transition {
             OpacityAnimator {
@@ -100,12 +134,18 @@ Window {
                 GradientStop { position: 0; color: "#2a2a2a" }
                 GradientStop { position: 1; color: "#2a0000" }
             }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: (mouse) => mouse.accepted = true
+                onWheel: (wheel) => wheel.accepted = true
+                onPressed: (mouse) => mouse.accepted = true
+            }
         }
 
         property string error: "This is a string"
         property string operation: "This is a string"
         property string title: "This is a string"
-
 
         Rectangle {
             id: errorholder
@@ -200,12 +240,16 @@ Window {
         height: parent.height * 0.6
         anchors.centerIn: parent
         modal: true
-        z: 1
+        focus: true
+        dim: true
+        z: 2
+
+        property string mainImageUrl: "";
 
         property var systemData
         property var tempImages: []
         property var originalImages: []
-        property string newUploadedUrl: ""
+        property var uploadedUrls: []
         property bool isSaving: false
         property bool isUploading: false
 
@@ -213,11 +257,12 @@ Window {
             editInfoPopup.isSaving = false
             editInfoPopup.tempImages = []
             editInfoPopup.originalImages = []
-            editInfoPopup.newUploadedUrl = ""
+            editInfoPopup.uploadedUrls = []
 
             if (editInfoPopup.systemData && editInfoPopup.systemData.images) {
                 var rawList = editInfoPopup.systemData.images
                 var catImg = editInfoPopup.systemData.category_image
+                editInfoPopup.mainImageUrl = editInfoPopup.systemData.main_image || ""
                 var filteredList = []
 
                 for(var i = 0; i < rawList.length; i++) {
@@ -235,11 +280,19 @@ Window {
             target: SupabaseClient
             function onScreenshotReady(url) {
                 if (editInfoPopup.visible) {
-                    console.log("Received new screenshot URL: " + url)
-                    editInfoPopup.newUploadedUrl = url
+                    var urls = editInfoPopup.uploadedUrls
+                    urls.push(url)
+                    editInfoPopup.uploadedUrls = urls
+
                     var t = editInfoPopup.tempImages
                     t.unshift(url)
                     editInfoPopup.tempImages = t
+
+                    if (editInfoPopup.mainImageUrl === "" ||
+                            (editInfoPopup.systemData && editInfoPopup.mainImageUrl === editInfoPopup.systemData.category_image)) {
+                        editInfoPopup.mainImageUrl = url
+                    }
+
                     editInfoPopup.isUploading = false
                 }
             }
@@ -292,12 +345,11 @@ Window {
                 GradientStop { position: 1; color: "#1a1a1a" }
             }
 
-            WheelHandler {
-                onWheel: (event) => event.accepted = true
-            }
-
-            TapHandler {
-                onTapped: flickableringlmfaoooooo.forceActiveFocus()
+            MouseArea {
+                anchors.fill: parent
+                onClicked: (mouse) => mouse.accepted = true
+                onWheel: (wheel) => wheel.accepted = true
+                onPressed: (mouse) => mouse.accepted = true
             }
         }
 
@@ -577,18 +629,22 @@ Window {
                                 FileDialog {
                                     id: fileDialog
                                     title: "Select a screenshot"
+                                    fileMode: FileDialog.OpenFiles
                                     folder: StandardPaths.standardLocations(StandardPaths.PicturesLocation)[0]
 
                                     nameFilters: [ "Image files (*.jpg *.png *.bmp)" ]
                                     onAccepted: {
                                         editInfoPopup.isUploading = true
-                                        var pathUrl = fileDialog.file.toString()
-                                        var localFilePath = decodeURIComponent(pathUrl.replace(/^(file:\/{3})|(file:)/, ""))
-                                        SupabaseClient.uploadScreenshot(
-                                                    editInfoPopup.systemData.system_name,
-                                                    JournalManager.cmdrName,
-                                                    localFilePath)
-                                        fileDialog.close()
+                                        for (var i = 0; i < files.length; i++) {
+                                            var pathUrl = files[i].toString()
+                                            var localFilePath = decodeURIComponent(pathUrl.replace(/^(file:\/{3})|(file:)/, ""))
+
+                                            SupabaseClient.uploadScreenshot(
+                                                        editInfoPopup.systemData.system_name,
+                                                        JournalManager.cmdrName,
+                                                        localFilePath
+                                                        )
+                                        }
                                     }
                                 }
                             }
@@ -621,8 +677,24 @@ Window {
                                     anchors.bottom: parent.bottom
                                     pressedColor: "#676767"
                                     hoverColor: "#3e3e3e"
-                                    bcolor: "#2a2a2a"
+                                    bcolor: modelData === editInfoPopup.mainImageUrl ? "#ff9a00" : "#2a2a2a"
                                     radii: width / 10
+
+                                    onTapped: {
+                                        editInfoPopup.mainImageUrl = modelData
+                                        console.log("Selected main image: " + modelData)
+                                    }
+
+                                    Text {
+                                        text: "MAIN"
+                                        visible: modelData === editInfoPopup.mainImageUrl
+                                        font.family: antonFont.name
+                                        font.pixelSize: parent.width / 5
+                                        color: "white"
+                                        anchors.top: parent.top
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottomMargin: parent.height / 20
+                                    }
 
                                     RButton {
                                         id: deleteImageButton
@@ -637,16 +709,29 @@ Window {
                                         pressedColor: "#660000"
                                         z: 1
 
-
-
                                         onTapped: {
                                             var popup = imageList.parentPopup
                                             var list = Array.from(popup.tempImages)
                                             var urlToDelete = list[index]
                                             list.splice(index, 1)
                                             popup.tempImages = list
-                                            if (urlToDelete === popup.newUploadedUrl) {
-                                                popup.newUploadedUrl = ""
+                                            var queue = Array.from(popup.uploadedUrls)
+                                            var queueIndex = queue.indexOf(urlToDelete)
+
+                                            if(popup.mainImageUrl === urlToDelete) {
+                                                if(list.length > 0) {
+                                                    popup.mainImageUrl = list[0]
+                                                } else if (popup.systemData && popup.systemData.category_image) {
+                                                    popup.mainImageUrl = popup.systemData.category_image
+                                                } else {
+                                                    popup.mainImageUrl = ""
+                                                }
+                                            }
+
+                                            if (queueIndex !== -1) {
+                                                console.log("Removing deleted image from save queue: " + urlToDelete)
+                                                queue.splice(queueIndex, 1)
+                                                popup.uploadedUrls = queue
                                             }
                                         }
                                         Image {
@@ -693,11 +778,9 @@ Window {
                         canHover: !editInfoPopup.isSaving
 
                         onTapped: {
-                            var mainImg = ""
-                            if (editInfoPopup.tempImages.length > 0) {
-                                mainImg = editInfoPopup.tempImages[0]
-                            } else if (editInfoPopup.systemData.category_image) {
-                                mainImg = editInfoPopup.systemData.category_image
+                            var finalMainImg = editInfoPopup.mainImageUrl
+                            if (finalMainImg === "" && editInfoPopup.tempImages.length > 0) {
+                                finalMainImg = editInfoPopup.tempImages[0]
                             }
 
                             SupabaseClient.addContribution(
@@ -705,18 +788,22 @@ Window {
                                         JournalManager.cmdrName,
                                         field.text,
                                         thustheotherfieldlieshere.text,
-                                        mainImg
+                                        finalMainImg
                                         );
 
-                            if (editInfoPopup.newUploadedUrl !== "") {
-                                if (editInfoPopup.tempImages.indexOf(editInfoPopup.newUploadedUrl) !== -1) {
+                            var currentQueue = editInfoPopup.uploadedUrls
+                            for (var i = 0; i < currentQueue.length; i++) {
+                                var urlToSave = currentQueue[i]
+
+                                if (editInfoPopup.tempImages.indexOf(urlToSave) !== -1) {
                                     SupabaseClient.saveSystemImage(
                                                 editInfoPopup.systemData.system_name,
                                                 JournalManager.cmdrName,
-                                                editInfoPopup.newUploadedUrl
+                                                urlToSave
                                                 );
                                 }
                             }
+                            editInfoPopup.uploadedUrls = []
 
                             var originals = editInfoPopup.originalImages
                             var currents = editInfoPopup.tempImages
@@ -752,10 +839,10 @@ Window {
         id: effect
         color: "black"
         anchors.fill: parent
-        opacity: 1
+        opacity: 0
         z: 1
 
-        property bool easybool: false
+        property int rectangle: 0
 
         OpacityAnimator {
             id: effecter
@@ -771,17 +858,21 @@ Window {
             duration: 500
 
             onFinished: {
-                console.log("Animation finished! Target: " + effect.easybool)
-                if (effect.easybool === false) {
+                console.log("Animation finished! Target: " + effect.rectangle)
+                if (effect.rectangle === 0) {
                     effecter.start()
                     interfaceHolder.enabled = false
                     recordsInterface.enabled = true
                     recordsInterface.opacity = 1
-                } else if(effect.easybool === true) {
+                } else if(effect.rectangle === 1) {
                     effecter.start()
-                    recordsInterface.enabled = false
                     interfaceHolder.enabled = true
                     interfaceHolder.opacity = 1
+                } else if(effect.rectangle === 2) {
+                    effecter.start()
+                    interfaceHolder.enabled = false
+                    plotter.enabled = true
+                    plotter.opacity = 1
                 }
             }
         }
@@ -923,7 +1014,7 @@ Window {
 
                     onTapped: {
                         if(effect.opacity === 0) {
-                            effect.easybool = false
+                            effect.rectangle = 0
                             interfaceHolder.opacity = 0
                             uneffecter.start()
                         }
@@ -984,6 +1075,141 @@ Window {
                         }
                     }
                 }
+
+                RButton {
+                    id: galaxyPlotter
+                    width: scroller.width / 3
+                    height: scroller.height
+                    pressedColor: "#ffffff"
+                    radii: 0
+                    bcolor: "transparent"
+                    canHover: false
+
+                    signal affecterDone()
+
+                    onTapped: {
+                        if(effect.opacity === 0) {
+                            effect.rectangle = 2
+                            interfaceHolder.opacity = 0
+                            uneffecter.start()
+                        }
+                    }
+
+                    Image {
+                        width: parent.width
+                        height: parent.height
+                        source: "images/plotter2.png"
+                        fillMode: Image.PreserveAspectCrop
+                    }
+
+                    Text {
+                        id: plotterTitle
+                        color: "white"
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignTop
+                        font.wordSpacing: 0
+                        width: parent.width / 1.2
+                        height: parent.height / 4
+                        text: "Galaxy Plotter"
+                        font.pixelSize: parent.width / 8
+                        font.family: antonFont.name
+                        x: width / 30
+
+                        DesignEffect {
+                            effects: [
+                                DesignDropShadow {
+                                }
+                            ]
+                        }
+                    }
+
+                    Text {
+                        color: "white"
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignTop
+                        wrapMode: Text.Wrap
+                        font.family: loraFont.name
+                        font.wordSpacing: 0
+                        width: parent.width / 1.1
+                        height: parent.height / 3
+                        text: "Advanced plotter provided by Spansh. It'll take care of fuel, neutron supercharges, and injection boosts."
+                        font.pixelSize: parent.width / 16
+                        y: recordstitle.height - height / 2.7
+                        x: width / 30
+
+                        DesignEffect {
+                            effects: [
+                                DesignDropShadow {
+                                }
+                            ]
+                        }
+                    }
+                }
+
+                // RButton {
+                //     id: systemMap
+                //     width: scroller.width / 3
+                //     height: scroller.height
+                //     pressedColor: "#ffffff"
+                //     radii: 0
+                //     bcolor: "transparent"
+                //     canHover: false
+
+                //     Image {
+                //         width: parent.width
+                //         height: parent.height
+                //         source: "images/moreLaterBg.png"
+                //         fillMode: Image.PreserveAspectCrop
+                //         layer.enabled: true
+                //         layer.effect: MultiEffect {
+                //             blur: 0.5
+                //             blurEnabled: true
+                //         }
+                //     }
+
+                //     Text {
+                //         id: systemMapTitle
+                //         color: "white"
+                //         horizontalAlignment: Text.AlignLeft
+                //         verticalAlignment: Text.AlignTop
+                //         font.wordSpacing: 0
+                //         width: parent.width / 1.5
+                //         height: parent.height / 4
+                //         text: "System Map"
+                //         font.pixelSize: parent.width / 8
+                //         font.family: antonFont.name
+                //         x: width / 30
+
+                //         DesignEffect {
+                //             effects: [
+                //                 DesignDropShadow {
+                //                 }
+                //             ]
+                //         }
+                //     }
+
+                //     Text {
+                //         color: "white"
+                //         horizontalAlignment: Text.AlignLeft
+                //         verticalAlignment: Text.AlignTop
+                //         wrapMode: Text.Wrap
+                //         font.family: loraFont.name
+                //         font.wordSpacing: 0
+                //         width: parent.width / 1.5
+                //         height: parent.height / 4
+                //         text: "A system map viewer to see systems without visiting them."
+                //         font.pixelSize: parent.width / 16
+                //         y: morelaterTitle.height - height / 2
+                //         x: width / 30
+
+                //         DesignEffect {
+                //             effects: [
+                //                 DesignDropShadow {
+                //                 }
+                //             ]
+                //         }
+                //     }
+                // }
 
                 RButton {
                     id: morelater
@@ -1091,7 +1317,8 @@ Window {
 
                 onTapped: {
                     if(effect.opacity === 0) {
-                        effect.easybool = true
+                        effect.rectangle = 1
+                        recordsInterface.enabled = false
                         recordsInterface.opacity = 0
                         uneffecter.start()
                     }
@@ -1133,6 +1360,7 @@ Window {
                                 anchors.top: commanderTitle.bottom
                                 text: "CMDR " + JournalManager.cmdrName
                                 font.pixelSize: parent.width / 10
+                                fontSizeMode: Text.Fit
                                 leftPadding: parent.width / 50
                                 color: "white"
                             }
@@ -1146,6 +1374,7 @@ Window {
                                 text: JournalManager.location
                                 font.pixelSize: parent.width / 12
                                 verticalAlignment: Text.AlignVCenter
+                                fontSizeMode: Text.Fit
                                 padding: parent.width / 50
                                 color: "white"
                             }
@@ -1230,9 +1459,9 @@ Window {
                             Text {
                                 id: sysClaimed
                                 font.family: antonFont.name
-                                width: parent.width / 3.5
-                                height: parent.height / 8
-                                text: "CLAIMED SYSTEMS"
+                                width: parent.width / 5
+                                height: parent.height / 7
+                                text: "YOUR CLAIMS"
                                 font.pixelSize: parent.width / 30
                                 verticalAlignment: Text.AlignTop
                                 padding: parent.width / 50
@@ -1278,7 +1507,7 @@ Window {
                                 width: parent.width
                                 height: parent.height / 3
                                 anchors.top: sysClaimed.bottom
-                                text: "Claimed Systems: 0"
+                                text: "Claimed Systems: " + SupabaseClient.YourClaimed
                                 font.pixelSize: parent.width / 12
                                 padding: parent.width / 50
                                 color: "white"
@@ -1308,8 +1537,8 @@ Window {
                                         var mins = Math.floor((parent.elapsedSeconds % 3600) / 60)
                                         var secs = parent.elapsedSeconds % 60
                                         parent.duration = hours + "h:" +
-                                                       (mins < 10 ? "0" + mins : mins) + "m:" +
-                                                       (secs < 10 ? "0" + secs : secs) + "s"
+                                                (mins < 10 ? "0" + mins : mins) + "m:" +
+                                                (secs < 10 ? "0" + secs : secs) + "s"
                                     }
                                 }
                             }
@@ -1421,9 +1650,9 @@ Window {
                             Text {
                                 id: systemsClaimed
                                 font.family: antonFont.name
-                                width: parent.width / 4
+                                width: parent.width / 3
                                 height: parent.height / 10
-                                text: "YOUR CLAIMS"
+                                text: "TOTAL CLAIMED SYSTEMS"
                                 font.pixelSize: parent.width / 30
                                 verticalAlignment: Text.AlignTop
                                 padding: parent.width / 50
@@ -1487,7 +1716,7 @@ Window {
                                 width: parent.width
                                 height: parent.height / 7
                                 anchors.top: systemsClaimed.bottom
-                                text: "14 Systems Claimed"
+                                text: SupabaseClient.ClaimedSystems + " Systems Claimed"
                                 font.pixelSize: parent.width / 12
                                 leftPadding: parent.width / 50
                                 color: "white"
@@ -1850,6 +2079,7 @@ Window {
                                             Image {
                                                 id: testbackgroundimage
                                                 source: model.category_image
+                                                cache: false
                                                 fillMode: Image.PreserveAspectCrop
                                                 width: parent.width
                                                 height: parent.height
@@ -1925,8 +2155,12 @@ Window {
                                             enabled: frameOpenThing2.opacity === 1
 
                                             onTapped: {
-                                                frameOpenThing2.selectedIndex = index
-                                                SupabaseClient.sortMode = model.value
+                                                if(model.value === 2) {
+                                                    CategoryProxy.showOnlyClaims = !CategoryProxy.showOnlyClaims
+                                                } else {
+                                                    frameOpenThing2.selectedIndex = index
+                                                    SupabaseClient.sortMode = model.value
+                                                }
                                             }
 
                                             Rectangle {
@@ -1948,7 +2182,13 @@ Window {
                                                     fillMode: Image.PreserveAspectFit
                                                     anchors.centerIn: parent
                                                     width: parent.width
-                                                    opacity: index === frameOpenThing2.selectedIndex ? 1 : 0
+                                                    opacity: {
+                                                        if (model.value === 2) {
+                                                            return CategoryProxy.showOnlyClaims ? 1 : 0
+                                                        } else {
+                                                            return index === frameOpenThing2.selectedIndex ? 1 : 0
+                                                        }
+                                                    }
                                                 }
                                             }
 
@@ -1989,6 +2229,7 @@ Window {
                                         id: statusListModel
                                         ListElement {name: "Closest First"; source: "images/closestFirstSource.jpg"; value: 0}
                                         ListElement {name: "Furthest First"; source: "images/furthestFirstSource.jpeg"; value: 1}
+                                        ListElement {name: "Only My Claims"; source: "images/claimsSource.jpg"; value: 2}
                                     }
 
                                     delegate: filterComponent2
@@ -2066,6 +2307,10 @@ Window {
                                     hoverColor: "#7eb3b3b3"
                                     pressedColor: "#87ffdfb7"
 
+                                    onTapped: {
+                                        galaxyMapPopup.open()
+                                    }
+
                                     Text {
                                         text: "Galaxy Map"
                                         font.family: antonFont.name
@@ -2097,6 +2342,10 @@ Window {
                                 hoverColor: "#777777"
                                 pressedColor: "#bebebe"
 
+                                onTapped: {
+                                    settingsPopup.open()
+                                }
+
                                 Image {
                                     source: "images/settings-4-line.svg"
                                     fillMode: Image.PreserveAspectFit
@@ -2120,6 +2369,8 @@ Window {
             reuseItems: true
             cacheBuffer: 0
 
+            enabled: !galaxyMapPopup.actualPopup.visible
+
             ScrollBar.vertical: ScrollBar {
                 policy: ScrollBar.AsNeeded
             }
@@ -2128,13 +2379,17 @@ Window {
             delegate: SystemCard {
                 width: middleBar.width
                 height: middleBar.height / 6
-                system_text: model.system_name
-                sourceImg: model.category_image
-                category_text: model.category.join(", ")
-                distance: model.distance
+                systemName: model.system_name || ""
+                displayTitle: model.title || ""
+                mainImage: (model.main_image && typeof model.main_image === "string")
+                           ? model.main_image
+                           : "images/recordsBg.png"
+                category_text: model.category ? model.category.join(", ") : ""
+                distance: model.distance || "Unknown"
                 onTapped: {
                     if(!systemViewPopup.visible) {
-                        systemViewPopup.systemData = model.systemData
+                        var cleanData = model.systemData
+                        systemViewPopup.systemData = cleanData
                         systemViewPopup.open()
                     }
                 }
@@ -2177,5 +2432,26 @@ Window {
             // }
         }
     }
+
+    GalaxyPlotter {
+        id: plotter
+        anchors.centerIn: parent
+        opacity: 0
+        enabled: false
+        onTurnthisoff: {
+            if(effect.opacity === 0) {
+                effect.rectangle = 1
+                plotter.enabled = false
+                plotter.opacity = 0
+                uneffecter.start()
+            }
+        }
+    }
+
+    // SystemMap {
+    //     anchors.centerIn: parent
+    //     opacity: 0
+    //     enabled: false
+    // }
 }
 

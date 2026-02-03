@@ -18,6 +18,7 @@ JournalTask::JournalTask(JournalManager *manager, QString currentFile, qint64 fi
     m_manager = manager;
     m_currentFile = currentFile;
     m_filePosition = filePosition;
+    setAutoDelete(true);
 }
 
 void JournalTask::run() {
@@ -47,6 +48,36 @@ QVariantMap JournalTask::ReadJournalData()
                 if(obj["event"].toString() == "Commander") {
                     result["cmdrName"] = obj["Name"].toString();
                     qInfo() << "Found name!" << result["cmdrName"];
+                    break;
+                }
+            }
+        }
+
+        for(int i = 0; i < lines.size(); ++i) {
+            QString line = lines[i];
+            if (line.isEmpty()) continue;
+            QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8());
+            if(!doc.isNull() && doc.isObject()) {
+                QJsonObject obj = doc.object();
+                if(obj["event"].toString() == "FSDTarget") {
+                    obj.remove("timestamp");
+                    result["target"] = obj;
+                    qInfo() << "Found target!" << result["target"];
+                    break;
+                }
+            }
+        }
+
+        for(int i = 0; i < lines.size(); ++i) {
+            QString line = lines[i];
+            if (line.isEmpty()) continue;
+            QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8());
+            if(!doc.isNull() && doc.isObject()) {
+                QJsonObject obj = doc.object();
+                if(obj["event"].toString() == "Loadout") {
+                    obj.remove("timestamp");
+                    result["shipbuild"] = obj;
+                    qInfo() << "Found build!" << result["shipbuild"];
                     break;
                 }
             }

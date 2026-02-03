@@ -1,4 +1,15 @@
 #include "categoryfilterproxy.h"
+#include "journalmanager.h"
+#include "systemsmodel.h"
+
+void CategoryFilterProxy::setShowOnlyClaims(bool show)
+{
+    if(m_showOnlyClaims != show) {
+        m_showOnlyClaims = show;
+        emit showOnlyClaimsChanged();
+        invalidateFilter();
+    }
+}
 
 CategoryFilterProxy::CategoryFilterProxy(QObject *parent)
 {
@@ -33,11 +44,20 @@ void CategoryFilterProxy::setSelectedCategories(const QStringList &categories)
 
 bool CategoryFilterProxy::filterAcceptsRow(int source_row, const QModelIndex &source_parent) const
 {
-    if(m_selectedCategories.isEmpty()) {return true;}
-
     QModelIndex index = sourceModel()->index(source_row, 0, source_parent);
 
-    QVariant categoryData = sourceModel()->data(index, Qt::UserRole + 2);
+    if(m_showOnlyClaims) {
+        QVariantMap systemData = sourceModel()->data(index, SystemsModel::SystemDataRole).toMap();
+        QString claimant = systemData["claimed_by"].toString();
+
+        if(claimant != m_cmdrName) {
+            return false;
+        }
+    }
+
+    if(m_selectedCategories.isEmpty()) {return true;}
+
+    QVariant categoryData = sourceModel()->data(index, SystemsModel::CategoryRole);
     QStringList systemCategories = categoryData.toStringList();
 
     qDebug() << "Row" << source_row << "has categories:" << systemCategories;

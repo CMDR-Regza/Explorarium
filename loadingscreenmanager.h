@@ -11,11 +11,10 @@ public:
 signals:
     void loadApp();
 public slots:
-    void journalManagerComplete();
     void supabaseClientCompleted();
 private:
     void isDone();
-    const int m_bayNum = 2;
+    const int m_bayNum = 1;
     int m_done = 0;
 };
 

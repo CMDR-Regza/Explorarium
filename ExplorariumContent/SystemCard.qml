@@ -7,11 +7,11 @@ Item {
     id: root
     width: 823
     height: 180
-
-    property alias system_text: sysName.text
+    property string systemName: ""
+    property string displayTitle: ""
+    property string mainImage: ""
     property alias category_text: categoryName.text
     property alias distance: distance.text
-    property string sourceImg: "This is a string"
     signal tapped()
 
     Rectangle {
@@ -22,9 +22,10 @@ Item {
 
         Image {
             id: bgImage
-            source: root.sourceImg
+            source: root.mainImage !== "" ? root.mainImage : "images/recordsBg.png"
             asynchronous: true
             fillMode: Image.PreserveAspectCrop
+            cache: true
             width: rectangleRoot.width
             height: rectangleRoot.height
             opacity: status === Image.Ready ? 1 : 0
@@ -40,8 +41,44 @@ Item {
             width: rectangleRoot.width
             height: rectangleRoot.height / 2
             padding: rectangleRoot.height / 8
-            text: "Hydrae Sector DQ-Y b4"
+            text: root.displayTitle !== "" ? root.displayTitle : root.systemName
             font.pixelSize: rectangleRoot.width / 16
+
+            Item {
+                id: hitbox
+                x: parent.padding
+                y: parent.padding
+
+                width: sysName.contentWidth
+                height: sysName.contentHeight
+
+                HoverHandler {
+                    id: hoverHandler
+                    cursorShape: Qt.PointingHandCursor
+                    onHoveredChanged: {
+                        if(hovered) {
+                            sysName.color = "dark orange"
+                        } else {
+                            sysName.color = "#ffffff"
+                        }
+                    }
+                }
+
+                TapHandler {
+                    onTapped: {
+                        SupabaseClient.texttoClipboard(root.systemName)
+                    }
+                    onPressedChanged: {
+                        if(pressed) {
+                            sysName.color = "orange"
+                        } else {
+                            sysName.color = "#ffffff"
+                        }
+                    }
+                }
+            }
+
+            Behavior on color { ColorAnimation { duration: 20 }}
 
             DesignEffect {
                 effects: [

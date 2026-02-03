@@ -8,20 +8,28 @@
 #include <QSettings>
 #include <QApplication>
 #include <QTimer>
+#include <QJsonObject>
 
 JournalManager::JournalManager(QObject *parent)
     : QObject{parent}
 {
     qInfo() << this << "Constructed";
+
+    QSettings settings(QApplication::organizationName(), QApplication::applicationName());
+    m_journalPath = settings.value("journalPath", m_journalPath).toString();
+    if(m_journalPath.isEmpty() || m_journalPath.isNull()) {
+        m_journalPath = QDir::homePath() + "/Saved Games/Frontier Developments/Elite Dangerous/";
+    }
+    m_commanderName = settings.value("cmdrName", "Unknown").toString();
+    m_shipbuild = settings.value("shipbuild", "Unknown").toJsonObject();
+    m_location = settings.value("location", "Unknown").toString();
+    QVariantList coordsVar = settings.value("coordinates", QVariantList()).toList();
+
     m_watcher = new QFileSystemWatcher(this);
     m_watcher->addPath(m_journalPath);
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &JournalManager::onNewFile);
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &JournalManager::onJournalUpdate);
 
-    QSettings settings(QApplication::organizationName(), QApplication::applicationName());
-    m_commanderName = settings.value("cmdrName", "Unknown").toString();
-    m_location = settings.value("location", "Unknown").toString();
-    QVariantList coordsVar = settings.value("coordinates", QVariantList()).toList();
     qInfo() << coordsVar;
     m_coordinates.clear();
     for (int i = 0; i < coordsVar.size(); ++i) {
@@ -29,7 +37,7 @@ JournalManager::JournalManager(QObject *parent)
     }
     m_debounceTimer = new QTimer(this);
     m_debounceTimer->setSingleShot(true);
-    m_debounceTimer->setInterval(1000);
+    m_debounceTimer->setInterval(200);
     connect(m_debounceTimer, &QTimer::timeout, this, &JournalManager::contactJournalData);
 
     onNewFile();
@@ -76,8 +84,6 @@ void JournalManager::contactJournalData()
 void JournalManager::onJournalDataLoaded(const QVariantMap &data)
 {
     QSettings settings(QApplication::organizationName(), QApplication::applicationName());
-    bool hadCmdr = !m_commanderName.isEmpty();
-    bool hadLocation = !m_location.isEmpty();
     if (data.contains("cmdrName")) {
         QString name = data["cmdrName"].toString();
         if (!name.isEmpty()) {
@@ -87,6 +93,23 @@ void JournalManager::onJournalDataLoaded(const QVariantMap &data)
             emit CmdrChanged();
             emit loadingComplete();
         }
+    }
+
+    if(data.contains("target")) {
+        QJsonObject targetObj = data.value("target").toJsonObject();
+        if(m_windowPopupFirst) {
+            QString id64 = QString::number(targetObj.value("SystemAddress").toVariant().toLongLong());
+            QString systemName = targetObj.value("Name").toString();
+            emit targetEvent(id64, systemName);
+        } else {
+            m_windowPopupFirst = true;
+        }
+    }
+
+    if(data.contains("shipbuild")) {
+        QJsonObject shipObj = data.value("shipbuild").toJsonObject();
+        m_shipbuild = shipObj;
+        settings.setValue("shipbuild", m_shipbuild);
     }
 
     if (data.contains("location")) {
@@ -108,11 +131,6 @@ void JournalManager::onJournalDataLoaded(const QVariantMap &data)
     if(data.contains("pos")) {
         m_fileposition = data["pos"].toLongLong();
     }
-
-    bool nowHasBoth = !m_commanderName.isEmpty() && !m_location.isEmpty();
-    if (nowHasBoth && (!hadCmdr || !hadLocation)) {
-        emit loadingComplete();
-    }
 }
 
 QString JournalManager::commanderName()
@@ -125,9 +143,32 @@ QString JournalManager::location()
     return m_location;
 }
 
-QList<double> JournalManager::coordinates()
+void JournalManager::setJournalPath(QString path)
 {
-    return m_coordinates;
+    if(path.isEmpty() || path.isNull()) return;
+    if(path == m_journalPath) {qInfo() << "Same journal Path"; return;}
+    QSettings settings(QApplication::organizationName(), QApplication::applicationName());
+    QDir dir(path);
+    if(dir.exists()) {
+        m_watcher->removePath(m_journalPath);
+        m_watcher->addPath(path);
+        m_journalPath = path;
+        settings.setValue("journalPath", path);
+
+        if(!m_currentJournalFile.isEmpty()) {
+            m_watcher->removePath(m_currentJournalFile);
+            m_currentJournalFile = QString();
+        }
+
+        emit journalPathChanged();
+
+        onNewFile();
+    } else {
+        qWarning() << "Path doesn't exist! Aborting change";
+        return;
+    }
 }
+
+
 
 

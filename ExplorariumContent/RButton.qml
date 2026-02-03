@@ -48,31 +48,68 @@ Item {
         }
 
 
-        TapHandler {
-            onPressedChanged: {
-                if(root.canClick) {
-                    if(pressed) {
-                        recta.color = pressedColor
-                    } else {
-                        recta.color = bcolor
-                    }
+        // TapHandler {
+        //     onPressedChanged: {
+        //         if(root.canClick) {
+        //             if(pressed) {
+        //                 recta.color = pressedColor
+        //             } else {
+        //                 recta.color = bcolor
+        //             }
+        //         }
+        //     }
+        //     onTapped: {
+        //         if (root.canClick) {
+        //             root.tapped()
+        //         }
+        //     }
+        // }
+        // HoverHandler {
+        //     onHoveredChanged: {
+        //         if(canHover) {
+        //             if(hovered) {
+        //                 root.hovered()
+        //                 onHovered.start()
+        //             } else {
+        //                 exitHovered.start()
+        //             }
+        //         }
+        //     }
+        // }
+
+        MouseArea {
+            id: mouseSense
+            anchors.fill: parent
+            enabled: root.canClick
+            hoverEnabled: root.canHover
+            preventStealing: true
+
+            onPressed: {
+                recta.color = root.pressedColor
+            }
+
+            onReleased: {
+                if (containsMouse && root.canHover) {
+                    recta.color = root.hoverColor
+                } else {
+                    recta.color = root.bcolor
                 }
             }
-            onTapped: {
-                if (root.canClick) {
-                    root.tapped()
+
+            onClicked: {
+                root.tapped()
+            }
+
+            onEntered: {
+                if(root.canHover) {
+                    root.hovered()
+                    onHovered.start()
                 }
             }
-        }
-        HoverHandler {
-            onHoveredChanged: {
-                if(canHover) {
-                    if(hovered) {
-                        root.hovered()
-                        onHovered.start()
-                    } else {
-                        exitHovered.start()
-                    }
+
+            onExited: {
+                if(root.canHover) {
+                    exitHovered.start()
                 }
             }
         }

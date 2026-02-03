@@ -23,6 +23,9 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup()
 
 
@@ -36,8 +39,22 @@ qt_add_executable(${CMAKE_PROJECT_NAME} WIN32
     categorymodel.h categorymodel.cpp
     categoryfilterproxy.h categoryfilterproxy.cpp
     imgbbtask.h imgbbtask.cpp
+    calculationworker.h calculationworker.cpp
+    galaxymapitem.h galaxymapitem.cpp
+    spanshplotter.h spanshplotter.cpp
+    routetask.h routetask.cpp
+    spanshdbtask.h spanshdbtask.cpp
+    systemnode.h
+    systemnode.cpp
+
 )
 qt_add_resources(${CMAKE_PROJECT_NAME} "configuration"
+
+target_link_libraries(ExplorariumApp PRIVATE Qt6::Core)
+
+target_link_libraries(ExplorariumApp PRIVATE Qt6::Core)
+
+target_link_libraries(ExplorariumApp PRIVATE Qt6::Core)
 
 target_link_libraries(ExplorariumApp PRIVATE Qt6::Core)
 

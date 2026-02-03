@@ -13,11 +13,16 @@
 #include "supabaseclient.h"
 #include "journalmanager.h"
 #include "categoryfilterproxy.h"
+#include "galaxymapitem.h"
+#include "spanshplotter.h"
 
 int main(int argc, char *argv[])
 {
     set_qt_environment();
     QApplication app(argc, argv);
+    qRegisterMetaType<QList<QVariantMap>>("QList<QVariantMap>");
+    qRegisterMetaType<QJsonArray>("QJsonArray");
+    qmlRegisterUncreatableType<SystemNode>("Spansh", 1, 0, "SystemNode", "Cannot create SystemNode in QML");
     app.setWindowIcon(QIcon(":/qt/qml/ExplorariumContent/images/logo.png"));
     app.setOrganizationName("Explorarium");
     app.setApplicationName("ExplorariumApp");
@@ -28,12 +33,17 @@ int main(int argc, char *argv[])
     JournalManager *jmanager = new JournalManager(&app);
     SupabaseClient *smanager = new SupabaseClient(&app, jmanager);
     CategoryFilterProxy *pmanager = new CategoryFilterProxy(&app);
+    SpanshPlotter *spmanager = new SpanshPlotter(&app);
     pmanager->setSourceModel(smanager->systemsModel());
 
-    QObject::connect(jmanager, &JournalManager::loadingComplete, manager,
-                     &LoadingScreenManager::journalManagerComplete);
+    QObject::connect(smanager, &SupabaseClient::backerroroccurred, spmanager, &SpanshPlotter::error);
+    QObject::connect(jmanager, &JournalManager::targetEvent, spmanager, &SpanshPlotter::gotTargetEvent);
+    QObject::connect(smanager, &SupabaseClient::shipbuildloadedez, spmanager, &SpanshPlotter::loadingbaydataplease);
+    smanager->fetchShipData();
     QObject::connect(smanager, &SupabaseClient::supabaseClientComplete, manager,
                      &LoadingScreenManager::supabaseClientCompleted);
+
+    jmanager->onNewFile();
 
     const QUrl url("qrc:/qt/qml/ExplorariumContent/App.qml");
     QObject::connect(
@@ -48,11 +58,15 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("SupabaseClient", smanager);
     engine.rootContext()->setContextProperty("applicationVersion", app.applicationVersion());
     engine.rootContext()->setContextProperty("CategoryProxy", pmanager);
+    engine.rootContext()->setContextProperty("SpanshPlotter", spmanager);
+
+    qmlRegisterType<GalaxyMapItem>("Explorarium.Native", 1, 0, "GalaxyMap");
 
     engine.addImportPath(QCoreApplication::applicationDirPath() + "/qml");
     engine.addImportPath(":/");
     engine.load(url);
     engine.load("qrc:/qt/qml/ExplorariumContent/LoadingScreen.qml");
+    engine.load("qrc:/qt/qml/ExplorariumContent/PopupWindow.qml");
 
     if (engine.rootObjects().isEmpty())
         return -1;

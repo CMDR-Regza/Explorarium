@@ -46,34 +46,6 @@ Window {
                 id: antonFont
                 source: "fonts/Anton-Regular.ttf"
             }
-
-            Text {
-                id: progressText
-                width: parent.width / 1.4
-                height: parent.height
-                y: -parent.height + parent.height * 1.04
-                x: -parent.height + parent.height / 0.89
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                antialiasing: true
-                fontSizeMode: Text.Fit
-                font.styleName: "ExtraBold"
-                font.family: antonFont.name
-                text: "23%"
-                color: "white"
-                smooth: true
-                font.pixelSize: parent.width / 5
-                DesignEffect {
-                    effects: [
-                        DesignDropShadow {
-                            color: "#ffa500"
-                            offsetY: progressText.height / 200
-                            blur: 0
-
-                        }
-                    ]
-                }
-            }
         }
 
         Image {

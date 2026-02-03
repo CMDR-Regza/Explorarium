@@ -1,4 +1,5 @@
 #include "systemsmodel.h"
+#include "supabaseclient.h"
 #include <QDebug>
 #include <QByteArray>
 #include <QHash>
@@ -24,10 +25,20 @@ QVariant SystemsModel::data(const QModelIndex &index, int role) const
     case SystemNameRole: return system["system_name"];
     case CategoryRole: return system["category"];
     case DistanceRole: return system["distance"];
-    case CategoryImageRole: return system["category_image"];
+    case MainImageRole: return system["main_image"];
+    case TitleRole: return system["title"];
+    case CategoryImageRole: {
+        QString rawUrl = system["category_image"].toString();
+        return rawUrl;
+    };
     case SystemDataRole: return system;
     default: return QVariant();
     }
+}
+
+void SystemsModel::setClient(SupabaseClient *client)
+{
+    m_client = client;
 }
 
 QHash<int, QByteArray> SystemsModel::roleNames() const
@@ -36,6 +47,8 @@ QHash<int, QByteArray> SystemsModel::roleNames() const
     roles[SystemNameRole] = "system_name";
     roles[CategoryRole] = "category";
     roles[DistanceRole] = "distance";
+    roles[TitleRole] = "title";
+    roles[MainImageRole] = "main_image";
     roles[CategoryImageRole] = "category_image";
     roles[SystemDataRole] = "systemData";
     return roles;
@@ -43,9 +56,15 @@ QHash<int, QByteArray> SystemsModel::roleNames() const
 
 void SystemsModel::setSystemsData(QList<QVariantMap> systems)
 {
-    if(!systems.isEmpty()) {
+    if (m_systems.size() != systems.size()) {
         beginResetModel();
         m_systems = systems;
         endResetModel();
+        return;
     }
+    m_systems = systems;
+    QModelIndex topLeft = createIndex(0, 0);
+    QModelIndex bottomRight = createIndex(m_systems.size() - 1, 0);
+
+    emit dataChanged(topLeft, bottomRight);
 }

@@ -10,6 +10,7 @@ class SupabaseTask : public QRunnable
 public:
     enum Operation {
         FETCH_SYSTEMS,
+        FETCH_SINGLE_SYSTEM,
         FETCH_CATEGORY_IMAGES,
         CLAIM_SYSTEM,
         UNCLAIM_SYSTEM,
@@ -18,7 +19,8 @@ public:
         FETCH_SYSTEM_IMAGES,
         ADD_CONTRIBUTION,
         UPLOAD_IMAGE,
-        REMOVE_IMAGE
+        REMOVE_IMAGE,
+        SHIP_BUILD
     };
     SupabaseTask(SupabaseClient *client, Operation op, QVariantMap params, QString url, QString key);
     void FetchSystems();
@@ -31,6 +33,8 @@ public:
     void AddContributions();
     void UploadImage();
     void RemoveImage();
+    void FetchShipBuild();
+    void FetchSingleSystem();
     void run() override;
 private:
     SupabaseClient *m_client;

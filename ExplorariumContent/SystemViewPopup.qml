@@ -12,17 +12,24 @@ Popup {
     height: parent.height * 0.9
     anchors.centerIn: parent
     modal: true
+    focus: true
+    dim: true
 
     signal requestEdit(var data)
-    property bool isProcessing: false
+    property bool isProcessing: true
     property bool isClaimed: false
     property bool isClaimedByOther: false
     property var systemData: null
     property string currentSystemName: root.systemData ? root.systemData.system_name : ""
 
+    onClosed: {
+        root.isProcessing = true
+    }
+
     onOpened: {
+        root.isProcessing = true
         refreshPopup()
-        root.isProcessing = false
+        SupabaseClient.fetchSystemStatus(root.currentSystemName)
     }
 
     Connections {
@@ -33,19 +40,21 @@ Popup {
                 root.isProcessing = false
             }
         }
-        function onSystemsLoaded() {
-            if (root.visible) {
-                refreshPopup()
-            }
-        }
-        function onImagesChanged(url, systemName) {
-            if (root.visible && systemName === root.currentSystemName) {
+        function onSingleSystemDataUpdated(systemName) {
+            if (systemName === root.currentSystemName) {
+                console.log("Synced data received for: " + systemName)
                 refreshPopup()
                 root.isProcessing = false
             }
         }
+        function onSystemsLoaded() {
+            if (root.visible && root.systemData && root.systemData.system_name) {
+                refreshPopup()
+            }
+        }
     }
     function refreshPopup() {
+        if (!root.systemData || !root.systemData.system_name) return;
         console.log("Refreshing SystemViewPopup for: " + root.currentSystemName)
         var freshData = SupabaseClient.getSystem(root.currentSystemName)
         root.systemData = freshData
@@ -90,6 +99,13 @@ Popup {
             GradientStop { position: 0; color: "#2a2a2a" }
             GradientStop { position: 1; color: "#1a1a1a" }
         }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: (mouse) => mouse.accepted = true
+            onWheel: (wheel) => wheel.accepted = true
+            onPressed: (mouse) => mouse.accepted = true
+        }
     }
 
     Rectangle {
@@ -109,7 +125,7 @@ Popup {
 
             Image {
                 id: mainImage
-                source: root.systemData ? root.systemData.main_image : ""
+                source: (root.systemData && root.systemData.main_image) ? root.systemData.main_image : "images/recordsBg.png"
                 fillMode: Image.PreserveAspectCrop
                 anchors.top: parent.top
                 width: parent.width
@@ -177,6 +193,41 @@ Popup {
                     text: root.systemData ? root.systemData.title : ""
                     z: 1
 
+                    Item {
+                        id: hitbox
+                        anchors.centerIn: parent
+
+                        width: title.contentWidth
+                        height: title.contentHeight
+
+                        HoverHandler {
+                            id: hoverHandler
+                            cursorShape: Qt.PointingHandCursor
+                            onHoveredChanged: {
+                                if(hovered) {
+                                    title.color = "dark orange"
+                                } else {
+                                    title.color = "#ffffff"
+                                }
+                            }
+                        }
+
+                        TapHandler {
+                            onTapped: {
+                                SupabaseClient.texttoClipboard(root.systemData.system_name)
+                            }
+                            onPressedChanged: {
+                                if(pressed) {
+                                    title.color = "orange"
+                                } else {
+                                    title.color = "#ffffff"
+                                }
+                            }
+                        }
+                    }
+
+                    Behavior on color { ColorAnimation { duration: 20 }}
+
                     Rectangle {
                         id: randomlinebru1
                         width: parent.width / 2
@@ -199,8 +250,8 @@ Popup {
                     anchors.fill: parent
 
                     gradient: Gradient {
-                            GradientStop { position: 0.8; color: "#00000000" }  // Transparent
-                            GradientStop { position: 1.0; color: "#242424" }  // Semi-transparent black
+                        GradientStop { position: 0.8; color: "#00000000" }  // Transparent
+                        GradientStop { position: 1.0; color: "#242424" }  // Semi-transparent black
                     }
                 }
             }
@@ -282,7 +333,7 @@ Popup {
                         Text {
                             anchors.centerIn: parent
                             text: {
-                                if (root.isProcessing) return "..."
+                                if (root.isProcessing) return "Syncing..."
                                 if (root.isClaimedByOther) return "Claimed by " + root.systemData.claimed_by
                                 if (root.isClaimed) return "Unclaim"
                                 return "Claim"
@@ -361,11 +412,11 @@ Popup {
                                 color: "white"
 
                                 onLineLaidOut: (line) => {
-                                    if (line.y < doubleQuotesTop.height + doubleQuotesTop.anchors.margins) {
-                                        line.width = descriptionArea.width - doubleQuotesTop.width - doubleQuotesTop.anchors.margins * 2
-                                        line.x = doubleQuotesTop.width + doubleQuotesTop.anchors.margins * 2
-                                    }
-                                }
+                                                   if (line.y < doubleQuotesTop.height + doubleQuotesTop.anchors.margins) {
+                                                       line.width = descriptionArea.width - doubleQuotesTop.width - doubleQuotesTop.anchors.margins * 2
+                                                       line.x = doubleQuotesTop.width + doubleQuotesTop.anchors.margins * 2
+                                                   }
+                                               }
                             }
                         }
 
@@ -394,8 +445,10 @@ Popup {
             Connections {
                 target: root
                 function onSystemDataChanged() {
-                    if (root.systemData) {
+                    if (root.systemData && root.systemData.main_image) {
                         rightBorder.activeImageUrl = root.systemData.main_image
+                    } else {
+                        rightBorder.activeImageUrl = "images/recordsBg.png"
                     }
                 }
             }
