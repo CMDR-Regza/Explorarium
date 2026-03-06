@@ -7,6 +7,7 @@
 #include <QIcon>
 #include <QSslConfiguration>
 #include <QtGlobal>
+#include <QQuickWindow>
 
 #include "autogen/environment.h"
 #include "loadingscreenmanager.h"
@@ -22,11 +23,10 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     qRegisterMetaType<QList<QVariantMap>>("QList<QVariantMap>");
     qRegisterMetaType<QJsonArray>("QJsonArray");
-    qmlRegisterUncreatableType<SystemNode>("Spansh", 1, 0, "SystemNode", "Cannot create SystemNode in QML");
     app.setWindowIcon(QIcon(":/qt/qml/ExplorariumContent/images/logo.png"));
     app.setOrganizationName("Explorarium");
     app.setApplicationName("ExplorariumApp");
-    app.setApplicationVersion("0.0.1-Alpha");
+    app.setApplicationVersion("v1.0-beta");
 
     QQmlApplicationEngine engine;
     LoadingScreenManager *manager = new LoadingScreenManager(&app);
@@ -67,6 +67,14 @@ int main(int argc, char *argv[])
     engine.load(url);
     engine.load("qrc:/qt/qml/ExplorariumContent/LoadingScreen.qml");
     engine.load("qrc:/qt/qml/ExplorariumContent/PopupWindow.qml");
+    for (QObject *obj : engine.rootObjects()) {
+        if (obj->objectName() == "PopupWindow") {
+            if (auto *win = qobject_cast<QQuickWindow *>(obj)) {
+                win->setFlag(Qt::WindowTransparentForInput, true);
+            }
+            break;
+        }
+    }
 
     if (engine.rootObjects().isEmpty())
         return -1;

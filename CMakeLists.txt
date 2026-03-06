@@ -44,8 +44,8 @@ qt_add_executable(${CMAKE_PROJECT_NAME} WIN32
     spanshplotter.h spanshplotter.cpp
     routetask.h routetask.cpp
     spanshdbtask.h spanshdbtask.cpp
-    systemnode.h
-    systemnode.cpp
+
+
 
 )
 qt_add_resources(${CMAKE_PROJECT_NAME} "configuration"

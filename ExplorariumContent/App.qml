@@ -10,7 +10,7 @@ Window {
     id: root
     width: 1920
     height: 1080
-    visible: true
+    visible: false
     color: "#00000000"
     title: "Explorarium"
 
@@ -26,6 +26,10 @@ Window {
         value: JournalManager.cmdrName
     }
 
+    // Component.onCompleted: {
+    //     editInfoPopup.open()
+    // }
+
     Connections {
         target: loadingScreenManager
         function onLoadApp() {
@@ -34,6 +38,14 @@ Window {
             root.raise()
             root.requestActivate()
             effecter.start()
+        }
+    }
+
+    Connections {
+        target: systemViewPopup
+        function onOpenImage(imgUrl) {
+            theImage.source = imgUrl
+            imagePopup.open()
         }
     }
 
@@ -55,6 +67,70 @@ Window {
     FontLoader {
         id: loraFont
         source: "fonts/Lora-VariableFont_wght.ttf"
+    }
+
+    InfoPopup {
+        id: infoPopup
+        antonFontName: antonFont.name
+        loraFontName: loraFont.name
+    }
+
+    Popup {
+        id: imagePopup
+        width: parent.width * 0.8
+        height: parent.height * 0.9
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        dim: true
+        z: 10
+
+        enter: Transition {
+            OpacityAnimator {
+                target: imgHolder
+                to: 1
+                duration: 350
+            }
+        }
+
+        exit: Transition {
+            OpacityAnimator {
+                target: imgHolder
+                to: 0
+                duration: 350
+            }
+        }
+
+        background: Rectangle {
+            id: imageBg
+            opacity: 0
+
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                onTapped: imagePopup.close()
+            }
+
+            WheelHandler {
+                onWheel: wheel.accepted = true
+            }
+        }
+
+        Item {
+            id: imgHolder
+            anchors.fill: parent
+            opacity: 0
+            Image {
+                id: theImage
+                fillMode: Image.PreserveAspectFit
+                width: parent.width
+                anchors.centerIn: parent
+
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    onTapped: {}
+                }
+            }
+        }
     }
 
     SettingRecordsPopup {
@@ -242,7 +318,15 @@ Window {
         modal: true
         focus: true
         dim: true
-        z: 2
+        z: 99
+
+        onClosed: {
+            systemViewPopup.isEditInfoOpen = false
+        }
+
+        property string fileErrorText: ""
+
+        closePolicy: Popup.NoAutoClose
 
         property string mainImageUrl: "";
 
@@ -343,13 +427,6 @@ Window {
             gradient: Gradient {
                 GradientStop { position: 0; color: "#2a2a2a" }
                 GradientStop { position: 1; color: "#1a1a1a" }
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: (mouse) => mouse.accepted = true
-                onWheel: (wheel) => wheel.accepted = true
-                onPressed: (mouse) => mouse.accepted = true
             }
         }
 
@@ -634,10 +711,25 @@ Window {
 
                                     nameFilters: [ "Image files (*.jpg *.png *.bmp)" ]
                                     onAccepted: {
+                                        editInfoPopup.fileErrorText = ""
                                         editInfoPopup.isUploading = true
+
+                                        let maxFileSizeMB = 16.0
+                                        let hasError = false
+
                                         for (var i = 0; i < files.length; i++) {
                                             var pathUrl = files[i].toString()
                                             var localFilePath = decodeURIComponent(pathUrl.replace(/^(file:\/{3})|(file:)/, ""))
+
+                                            var fileName = localFilePath.substring(localFilePath.lastIndexOf("/") + 1)
+                                            var sizeMB = SupabaseClient.getFileSizeMB(localFilePath)
+
+                                            if (sizeMB > maxFileSizeMB) {
+                                                editInfoPopup.fileErrorText = fileName + " is too large (" + sizeMB.toFixed(1) + " MB). Max is " + maxFileSizeMB + " MB."
+                                                hasError = true
+                                                console.log("Blocked upload: " + fileName)
+                                                continue;
+                                            }
 
                                             SupabaseClient.uploadScreenshot(
                                                         editInfoPopup.systemData.system_name,
@@ -645,8 +737,34 @@ Window {
                                                         localFilePath
                                                         )
                                         }
+
+                                        if (hasError && files.length === 1) {
+                                            editInfoPopup.isUploading = false
+                                        }
                                     }
                                 }
+                            }
+
+                            Text {
+                                id: simpleErrorText
+                                text: editInfoPopup.fileErrorText || ""
+                                height: parent.height
+                                width: parent.width / 2
+
+                                color: "#ff4444"
+                                font.family: loraFont.name
+                                font.pixelSize: parent.width / 30
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                fontSizeMode: Text.Fit
+                                anchors.verticalCenter: buttonRow.verticalCenter
+                                anchors.verticalCenterOffset: parent.height / 10
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                visible: text !== ""
+
+                                Behavior on opacity { NumberAnimation { duration: 250 } }
+                                opacity: visible ? 1.0 : 0.0
                             }
 
                             ListView {
@@ -761,6 +879,7 @@ Window {
                                     target: imageList
                                     property: "contentX"
                                     rotationScale: -1
+                                    enabled: imageList.contentWidth > imageList.width
                                 }
                             }
                         }
@@ -910,7 +1029,7 @@ Window {
             }
 
             RButton {
-                id: settingsBtn
+                id: discordBtn
                 pressedColor: "dark orange"
                 hoverColor: "#00658c"
                 width: height
@@ -919,12 +1038,44 @@ Window {
                 radii: 0
                 canHover: false
                 bcolor: "#00000000"
+
+                onTapped: {
+                    Qt.openUrlExternally("https://discord.gg/qNwtA6XVVT")
+                }
+
                 Image {
-                    id: imgSettings
+                    id: imgDiscord
                     anchors.right: parent.right
                     width: parent.height
                     height: width
-                    source: "images/settings-4-line.svg"
+                    source: "images/discord-fill.svg"
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    smooth: true
+                }
+            }
+
+            RButton {
+                id: infoBtn
+                pressedColor: "dark orange"
+                hoverColor: "#00658c"
+                width: height
+                height: parent.height
+                anchors.left: parent.left
+                radii: 0
+                canHover: false
+                bcolor: "#00000000"
+
+                onTapped: {
+                    infoPopup.open()
+                }
+
+                Image {
+                    id: imgInfo
+                    anchors.right: parent.right
+                    source: "images/information-2-lines.svg"
+                    width: parent.height
+                    height: width
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true
@@ -1061,10 +1212,10 @@ Window {
                         font.family: loraFont.name
                         font.wordSpacing: 0
                         width: parent.width / 1.5
-                        height: parent.height / 4
-                        text: "Catalogue of extremely remarkable systems."
+                        height: parent.height / 1
+                        text: "A plethora of extremely remarkable systems. These systems are uncatalogued and only identified from datasets."
                         font.pixelSize: parent.width / 16
-                        y: recordstitle.height - height / 2
+                        y: recordstitle.height - height / 8
                         x: width / 30
 
                         DesignEffect {
@@ -1626,9 +1777,9 @@ Window {
                             Text {
                                 id: newthisweek
                                 font.family: antonFont.name
-                                width: parent.width / 4
+                                width: parent.width / 2.8
                                 height: parent.height / 10
-                                text: "NEW THIS WEEK"
+                                text: "AMOUNT OF LATEST QUERY"
                                 font.pixelSize: parent.width / 30
                                 verticalAlignment: Text.AlignTop
                                 padding: parent.width / 50
@@ -2006,6 +2157,7 @@ Window {
                                     anchors.topMargin: parent.height / 6
                                     clip: true
                                     reuseItems: true
+                                    cacheBuffer: 0
 
                                     ScrollBar.vertical: ScrollBar {
                                         policy: ScrollBar.AsNeeded
@@ -2079,7 +2231,7 @@ Window {
                                             Image {
                                                 id: testbackgroundimage
                                                 source: model.category_image
-                                                cache: false
+                                                asynchronous: true
                                                 fillMode: Image.PreserveAspectCrop
                                                 width: parent.width
                                                 height: parent.height
@@ -2435,7 +2587,7 @@ Window {
 
     GalaxyPlotter {
         id: plotter
-        anchors.centerIn: parent
+        anchors.fill: parent
         opacity: 0
         enabled: false
         onTurnthisoff: {
@@ -2447,11 +2599,5 @@ Window {
             }
         }
     }
-
-    // SystemMap {
-    //     anchors.centerIn: parent
-    //     opacity: 0
-    //     enabled: false
-    // }
 }
 

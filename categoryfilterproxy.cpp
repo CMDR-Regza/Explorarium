@@ -1,5 +1,5 @@
 #include "categoryfilterproxy.h"
-#include "journalmanager.h"
+// #include "journalmanager.h"
 #include "systemsmodel.h"
 
 void CategoryFilterProxy::setShowOnlyClaims(bool show)
@@ -39,7 +39,10 @@ QStringList CategoryFilterProxy::selectedCategories() const
 void CategoryFilterProxy::setSelectedCategories(const QStringList &categories)
 {
     if(categories.isEmpty()) return;
+    if (m_selectedCategories == categories) return;
     m_selectedCategories = categories;
+    emit selectedCategoriesChanged();
+    invalidateFilter();
 }
 
 bool CategoryFilterProxy::filterAcceptsRow(int source_row, const QModelIndex &source_parent) const

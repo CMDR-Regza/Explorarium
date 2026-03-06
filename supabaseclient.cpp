@@ -64,6 +64,7 @@ void SupabaseClient::claimSystem(QString systemName, QString cmdrName)
     QVariantMap params;
     params["system_name"] = systemName;
     params["cmdr_name"] = cmdrName;
+    params["claimed"] = true;
 
     SupabaseTask *task = new SupabaseTask(this,
                                           SupabaseTask::CLAIM_SYSTEM,
@@ -79,6 +80,7 @@ void SupabaseClient::unclaimSystem(QString systemName, QString cmdrName)
     QVariantMap params;
     params["system_name"] = systemName;
     params["cmdr_name"] = cmdrName;
+    params["claimed"] = false;
 
     SupabaseTask *task = new SupabaseTask(this,
                                           SupabaseTask::UNCLAIM_SYSTEM,
@@ -111,17 +113,21 @@ void SupabaseClient::uploadScreenshot(QString systemName, QString cmdrName, QStr
     qInfo() << "Starting ImgBB upload for:" << imageUrl;
     m_pendingSystem = systemName;
     m_pendingCmdr = cmdrName;
-
-    // Create the task
     ImgBBTask *task = new ImgBBTask(this, imageUrl);
 
-    // Connect the signals (The Bridge)
     connect(task, &ImgBBTask::UploadFinished, this, &SupabaseClient::onImgbbSuccess);
     connect(task, &ImgBBTask::UploadFailed, this, [=](QString err){
         onError("Uploading Screenshot", "Upload Failed", err);
     });
 
     QThreadPool::globalInstance()->start(task);
+}
+
+double SupabaseClient::getFileSizeMB(const QString &fileUrl)
+{
+    QUrl url(fileUrl);
+    QFileInfo info(url.isLocalFile() ? url.toLocalFile() : fileUrl);
+    return info.size() / (1024.0 * 1024.0);
 }
 
 QString SupabaseClient::getCachedImage(QString url)
@@ -165,13 +171,14 @@ void SupabaseClient::fetchDbData()
     QThreadPool::globalInstance()->start(task);
 }
 
-void SupabaseClient::fetchSystemStatus(const QString &systemName)
+void SupabaseClient::fetchSystemStatus(const QString &systemName, const qint64 &id64)
 {
     qInfo() << "Fetching live status for:" << systemName;
     m_pendingSystem = systemName;
 
     QVariantMap params;
     params["system_name"] = systemName;
+    params["id64"] = id64;
 
     SupabaseTask *task = new SupabaseTask(this,
                                           SupabaseTask::FETCH_SINGLE_SYSTEM,
@@ -555,6 +562,7 @@ void SupabaseClient::MergeAndUpdateModel()
         m_contributions,
         m_systemImages,
         m_systemBodyDetails,
+        m_gecUrlsMap,
         m_manager->coordinates(),
         (int)m_sortMode
         );
@@ -918,6 +926,13 @@ void SupabaseClient::onSingleSystemLoaded(QVariantMap data)
         cleanUrls.append(v.toMap()["image_url"].toString());
     }
     m_systemImages.insert(systemName, cleanUrls);
+
+    QString gecUrl = data.value("gec_url").toString();
+    if (gecUrl.isEmpty()) {
+        m_gecUrlsMap.remove(systemName);
+    } else {
+        m_gecUrlsMap.insert(systemName, gecUrl);
+    }
 
     MergeAndUpdateModel(); // automatically updates m_mergedCache. Most important line here.
 

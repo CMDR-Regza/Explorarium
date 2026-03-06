@@ -34,10 +34,11 @@ public:
     Q_INVOKABLE void addContribution(QString systemName, QString cmdrName, QString title,
                                      QString desc, QString imageUrl);
     Q_INVOKABLE void uploadScreenshot(QString systemName, QString cmdrName, QString imageUrl);
+    Q_INVOKABLE double getFileSizeMB(const QString &fileUrl);
     Q_INVOKABLE QString getCachedImage(QString url);
     Q_INVOKABLE void fetchCategoryImages();
     Q_INVOKABLE void fetchDbData();
-    Q_INVOKABLE void fetchSystemStatus(const QString &systemName);
+    Q_INVOKABLE void fetchSystemStatus(const QString &systemName, const qint64 &id64);
     Q_INVOKABLE void removeCache();
     QVariantList rawSystems() const;
     void fetchShipData();
@@ -124,6 +125,7 @@ private:
 
     QList<QVariantMap> m_allSystems;
     QList<QVariantMap> m_allClaims;
+    QMap<QString, QString> m_gecUrlsMap;
     QMap<QString, QVariantList> m_systemBodyDetails;
     QMap<QString, QStringList> m_systemCategory;
 

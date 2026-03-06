@@ -7,6 +7,7 @@ CalculationWorker::CalculationWorker(QList<QVariantMap> systems,
                                      QVariantMap contribs,
                                      QVariantMap sysImages,
                                      QMap<QString, QVariantList> bodies,
+                                     QMap<QString, QString> gecUrls,
                                      QList<double> coords,
                                      int sortMode)
 {
@@ -15,6 +16,7 @@ CalculationWorker::CalculationWorker(QList<QVariantMap> systems,
     m_claims = claims;
     m_catImages = catImages;
     m_contribs = contribs;
+    m_gecUrls = gecUrls;
     m_sysImages = sysImages;
     m_bodies = bodies;
     m_coords = coords;
@@ -37,6 +39,8 @@ void CalculationWorker::run()
         }
 
         system["claimed_by"] = m_claims.value(sysName, "");
+        system["gec_url"] = m_gecUrls.value(sysName, "");
+
 
         if (m_contribs.contains(sysName)) {
             QVariantMap c = m_contribs[sysName].toMap();

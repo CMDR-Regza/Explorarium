@@ -23,7 +23,12 @@ JournalManager::JournalManager(QObject *parent)
     m_commanderName = settings.value("cmdrName", "Unknown").toString();
     m_shipbuild = settings.value("shipbuild", "Unknown").toJsonObject();
     m_location = settings.value("location", "Unknown").toString();
+    m_displayValue = settings.value("display", -1).toInt();
     QVariantList coordsVar = settings.value("coordinates", QVariantList()).toList();
+
+    m_displayWatcher = new QFileSystemWatcher(this);
+    m_displayWatcher->addPath(m_displayPath);
+    connect(m_displayWatcher, &QFileSystemWatcher::fileChanged, this,  &JournalManager::onChangedDisplayFile);
 
     m_watcher = new QFileSystemWatcher(this);
     m_watcher->addPath(m_journalPath);
@@ -41,6 +46,7 @@ JournalManager::JournalManager(QObject *parent)
     connect(m_debounceTimer, &QTimer::timeout, this, &JournalManager::contactJournalData);
 
     onNewFile();
+    onChangedDisplayFile();
 }
 
 QString JournalManager::findLatestJournal()
@@ -70,14 +76,33 @@ void JournalManager::onNewFile()
     }
 }
 
+void JournalManager::onChangedDisplayFile()
+{
+    if (!QFile::exists(m_displayPath)) return;
+
+    QVariantMap info;
+    info["display"] = true;
+    JournalTask *task = new JournalTask(this, m_displayPath, 0, info);
+    QThreadPool::globalInstance()->start(task);
+}
+
 void JournalManager::onJournalUpdate()
 {
     m_debounceTimer->start();
 }
 
+void JournalManager::onDisplayValueLoaded(const int value)
+{
+    QSettings settings(QApplication::organizationName(), QApplication::applicationName());
+    settings.setValue("display", value);
+    m_displayValue = value;
+    emit displayValueChanged();
+    qInfo() << "found new value";
+}
+
 void JournalManager::contactJournalData()
 {
-    JournalTask *task = new JournalTask(this, m_currentJournalFile, m_fileposition);
+    JournalTask *task = new JournalTask(this, m_currentJournalFile, m_fileposition, QVariantMap());
     QThreadPool::globalInstance()->start(task);
 }
 

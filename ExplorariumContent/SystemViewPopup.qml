@@ -15,9 +15,12 @@ Popup {
     focus: true
     dim: true
 
+    signal openImage(var imageUrl)
     signal requestEdit(var data)
     property bool isProcessing: true
     property bool isClaimed: false
+    property bool isEditInfoOpen: false
+    property bool inGec: false
     property bool isClaimedByOther: false
     property var systemData: null
     property string currentSystemName: root.systemData ? root.systemData.system_name : ""
@@ -29,7 +32,7 @@ Popup {
     onOpened: {
         root.isProcessing = true
         refreshPopup()
-        SupabaseClient.fetchSystemStatus(root.currentSystemName)
+        SupabaseClient.fetchSystemStatus(root.currentSystemName, root.systemData.id64)
     }
 
     Connections {
@@ -58,6 +61,14 @@ Popup {
         console.log("Refreshing SystemViewPopup for: " + root.currentSystemName)
         var freshData = SupabaseClient.getSystem(root.currentSystemName)
         root.systemData = freshData
+        console.log("id64:", freshData.id64)
+
+        var gec_url = freshData.gec_url
+        if(!gec_url || gec_url === "") {
+            root.inGec = false
+        } else {
+            root.inGec = true
+        }
 
         var owner = freshData.claimed_by
         var me = JournalManager.cmdrName
@@ -203,6 +214,7 @@ Popup {
                         HoverHandler {
                             id: hoverHandler
                             cursorShape: Qt.PointingHandCursor
+                            enabled: !root.isEditInfoOpen
                             onHoveredChanged: {
                                 if(hovered) {
                                     title.color = "dark orange"
@@ -213,6 +225,7 @@ Popup {
                         }
 
                         TapHandler {
+                            enabled: !root.isEditInfoOpen
                             onTapped: {
                                 SupabaseClient.texttoClipboard(root.systemData.system_name)
                             }
@@ -341,7 +354,11 @@ Popup {
                             color: "white"
                             font.family: antonFont.name
                             font.pixelSize: parent.width / 7
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                             fontSizeMode: Text.Fit
+                            width: parent.width
+                            height: parent.height
                         }
                     }
 
@@ -350,7 +367,7 @@ Popup {
                         width: parent.width / 4
                         height: parent.height / 10
                         radii: width / 2
-                        x: (parent.width - width) / 2 + (claimButton.width / 2)
+                        x: (parent.width - width) / 2
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: height
                         bcolor: root.isClaimed ? "#506060" : "#2a2a2a"
@@ -360,6 +377,7 @@ Popup {
                         canClick: root.isClaimed
 
                         onTapped: {
+                            root.isEditInfoOpen = true
                             root.requestEdit(root.systemData)
                         }
 
@@ -367,6 +385,50 @@ Popup {
                             anchors.centerIn: parent
                             text: "Edit Info"
                             color: root.isClaimed ? "white" : "#606060"
+                            font.family: antonFont.name
+                            font.pixelSize: parent.width / 7
+                        }
+                    }
+
+                    RButton {
+                        id: gecButton
+                        width: parent.width / 4
+                        height: parent.height / 10
+                        radii: width / 2
+                        anchors.left: editInfo.right
+                        anchors.leftMargin: editInfo.x / 20
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: height
+                        bcolor: "#965bde"
+                        hoverColor: "#2b2336"
+                        pressedColor: "#2b2336"
+                        canHover: !root.isProcessing
+                        canClick: !root.isProcessing
+
+                        onTapped: {
+                            if(root.inGec) {
+                                let url = root.systemData.gec_url
+                                Qt.openUrlExternally(url)
+                            } else {
+                                let url = "https://edastro.com/gec/new/" + root.systemData.system_name + "/POI Name Here"
+                                Qt.openUrlExternally(url)
+                            }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: {
+                                if(root.isProcessing) {
+                                    return "..."
+                                } else {
+                                    if(root.inGec) {
+                                        return "In GEC"
+                                    } else {
+                                        return "Not In GEC"
+                                    }
+                                }
+                            }
+                            color: root.isProcessing ? "#606060" : "white"
                             font.family: antonFont.name
                             font.pixelSize: parent.width / 7
                         }
@@ -481,6 +543,15 @@ Popup {
                         onStatusChanged: {
                             if (status === Image.Error) {
                                 console.log("Image Error for: " + source)
+                            }
+                        }
+
+                        TapHandler {
+                            enabled: !root.isEditInfoOpen
+                            onTapped: {
+                                if(holderImage.opacity === 1) {
+                                    openImage(holderImage.source)
+                                }
                             }
                         }
                     }

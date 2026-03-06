@@ -15,19 +15,12 @@ Item {
     property int durationMs: 1000
     property bool running: true
 
-    // One shared clock => never drifts
     property real t: 0.0
-
-    // ---- REAL geometry bounds ----
-    // Your coordinates only go from y=0..32 (not 0..40),
-    // so we must scale using vbH=32 or you'll get an empty gap at the bottom.
     property real vbW: 40
     property real vbH: 32
 
-    // Uniform scale (preserves shape and prevents stretching)
     property real s: Math.min(width / vbW, height / vbH)
 
-    // Center the geometry inside the Item
     property real ox: (width - (vbW * s)) / 2
     property real oy: (height - (vbH * s)) / 2
 
@@ -49,7 +42,6 @@ Item {
         return p
     }
 
-    // keyTimes: 0;0.2;1  values: base;1;base
     function opacityAt(base, phaseOffset) {
         var u = (root.t + phaseOffset) % 1.0
 
@@ -92,7 +84,6 @@ Item {
         }
     }
 
-    // OUTER (base 0.3)
     Tri { pts: root.triPoints(5,8, 10,16, 15,8);   baseOpacity: root.outerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.94736842) }
     Tri { pts: root.triPoints(5,8, 10,0,  15,8);   baseOpacity: root.outerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.89473684) }
     Tri { pts: root.triPoints(10,0,15,8,20,0);     baseOpacity: root.outerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.84210526) }
@@ -112,7 +103,6 @@ Item {
     Tri { pts: root.triPoints(0,16,5,24,10,16);    baseOpacity: root.outerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.05263158) }
     Tri { pts: root.triPoints(0,16,5,8, 10,16);    baseOpacity: root.outerBaseOpacity; phase: root.phaseFromBeginSeconds(0.0) }
 
-    // INNER (base 0.4)
     Tri { pts: root.triPoints(10,16,15,8, 20,16);  baseOpacity: root.innerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.83333333) }
     Tri { pts: root.triPoints(15,8, 20,16,25,8);   baseOpacity: root.innerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.66666667) }
     Tri { pts: root.triPoints(20,16,25,8, 30,16);  baseOpacity: root.innerBaseOpacity; phase: root.phaseFromBeginSeconds(-0.5) }

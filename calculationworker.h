@@ -18,6 +18,7 @@ public:
                       QVariantMap contribs,
                       QVariantMap sysImages,
                       QMap<QString, QVariantList> bodies,
+                      QMap<QString, QString> gecUrls,
                       QList<double> coords,
                       int sortMode);
 
@@ -33,6 +34,7 @@ private:
     QVariantMap m_catImages;
     QVariantMap m_contribs;
     QVariantMap m_sysImages;
+    QMap<QString, QString> m_gecUrls;
     QMap<QString, QVariantList> m_bodies;
     QList<double> m_coords;
     int m_sortMode;

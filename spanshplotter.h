@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <systemnode.h>
 
 class SpanshPlotter : public QObject
 {
@@ -23,13 +22,10 @@ signals:
     void generatedRoute();
     void routeChanged();
     void fatal(QString operation, QString title, QString error);
-    void showWindow(QString message);
+    void showWindow(QVariantMap data);
     void nodesListChanged();
 public slots:
     void error(QString operation, QString title, QString error);
-    void mapError(QString operation, QString title, QString error);
-    void mapEmpty();
-    void gotMapData(QVariantMap data);
     void loadingbaydataplease(QJsonArray data);
     void gotSpanshReply(QByteArray data);
     void gotTargetEvent(QString id64, QString systemName);
@@ -40,16 +36,9 @@ private:
     QJsonArray m_shipData;
     QVariantList m_route;
     bool m_spanshDone = false;
-    QString m_spanshMessage = "";
     bool m_edsmDone = false;
-    QString m_edsmMessage = "";
 
-    void calculateDimensions(SystemNode* node);
-    void assignCoordinates(SystemNode* node, double x, double y);
-    bool shouldStackVertically(SystemNode* node);
-    SystemNode* parseRecursive(const QVariantMap& data, SystemNode* parent);
-    void flattenTree(SystemNode *node);
-    void debug(SystemNode *node, int depth);
+    QVariantMap spanshEdsmPackage;
 
     void combine();
 };

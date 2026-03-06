@@ -53,7 +53,7 @@ void SupabaseTask::FetchSystems()
                                   Q_ARG(QString, "Failed to Fetch Systems"),
                                   Q_ARG(QString, "Fetching Systems"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -68,7 +68,7 @@ void SupabaseTask::FetchSystems()
                                   Q_ARG(QString, "Failed to Fetch Systems"),
                                   Q_ARG(QString, "Fetching Systems"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -78,9 +78,9 @@ void SupabaseTask::FetchSystems()
 
     QVariantList systems = array.toVariantList();
     qInfo() << "Fetched" << systems.size() << "systems";
-    // reply->deleteLater();
+    reply->deleteLater();
 
-    QString endpoint2 = m_url + "/rest/v1/claims?select=*";
+    QString endpoint2 = m_url + "/rest/v1/claims?select=*&claimed=eq.true";
     QUrl claimsUrl = QUrl(endpoint2);
     QNetworkRequest request2(claimsUrl);
     request2.setRawHeader("apikey", m_key.toUtf8());
@@ -100,7 +100,7 @@ void SupabaseTask::FetchSystems()
                                   Q_ARG(QString, "Failed to Fetch Claims"),
                                   Q_ARG(QString, "Fetching Claims"),
                                   Q_ARG(QString, "Timed out"));
-        // reply2->deleteLater();
+        reply2->deleteLater();
         return;
     }
 
@@ -115,13 +115,13 @@ void SupabaseTask::FetchSystems()
                                   Q_ARG(QString, "Failed to Fetch Claims"),
                                   Q_ARG(QString, "Fetching Claims"),
                                   Q_ARG(QString, errorMsg2));
-        // reply2->deleteLater();
+        reply2->deleteLater();
         return;
     }
 
     QVariantList claims = QJsonDocument::fromJson(reply2->readAll()).array().toVariantList();
     qInfo() << "Fetched" << claims.size() << "claims";
-    // reply2->deleteLater();
+    reply2->deleteLater();
     QMetaObject::invokeMethod(m_client, "onSystemsLoaded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantList, systems),
@@ -156,7 +156,7 @@ void SupabaseTask::FetchCategoryImages()
                                   Q_ARG(QString, "Failed to Fetch Category Images"),
                                   Q_ARG(QString, "Fetching Category Images"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     if(reply->error() != QNetworkReply::NoError) {
@@ -170,7 +170,7 @@ void SupabaseTask::FetchCategoryImages()
                                   Q_ARG(QString, "Failed to Fetch Category Images"),
                                   Q_ARG(QString, "Fetching Category Images"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -187,7 +187,7 @@ void SupabaseTask::FetchCategoryImages()
     }
 
     qInfo() << "Fetched" << categoryImages.size() << "categoryImages";
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onCategoryLoaded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantMap, categoryImages));
@@ -201,10 +201,13 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
     QTimer timer2;
     QEventLoop loop3;
     QTimer timer3;
+    QEventLoop loop4;
+    QTimer timer4;
     QNetworkAccessManager manager;
     timer.setSingleShot(true);
     timer2.setSingleShot(true);
     timer3.setSingleShot(true);
+    timer4.setSingleShot(true);
 
     QVariantMap data;
 
@@ -216,6 +219,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
     QUrlQuery query;
 
     query.addQueryItem("system_name", "eq." + m_params["system_name"].toString());
+    query.addQueryItem("claimed", "eq.true");
     url.setQuery(query);
 
     QNetworkRequest request(url);
@@ -235,7 +239,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
                                   Q_ARG(QString, "Failed to Fetch Current System Claims"),
                                   Q_ARG(QString, "Fetching Current System Claims"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     if(reply->error() != QNetworkReply::NoError) {
@@ -249,7 +253,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
                                   Q_ARG(QString, "Failed to Fetch Current System Claims"),
                                   Q_ARG(QString, "Fetching Current System Claims"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -262,7 +266,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
         QJsonObject systemRow = table[0].toObject();
         data["claims"] = systemRow.toVariantMap();
     }
-    // reply->deleteLater();
+    reply->deleteLater();
 
     // system images
 
@@ -291,7 +295,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
                                   Q_ARG(QString, "Failed to Fetch Current System Images"),
                                   Q_ARG(QString, "Fetching Current System Images"),
                                   Q_ARG(QString, "Timed out"));
-        // reply2->deleteLater();
+        reply2->deleteLater();
         return;
     }
     if(reply2->error() != QNetworkReply::NoError) {
@@ -305,14 +309,14 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
                                   Q_ARG(QString, "Failed to Fetch Current System Images"),
                                   Q_ARG(QString, "Fetching Current System Images"),
                                   Q_ARG(QString, errorMsg2));
-        // reply2->deleteLater();
+        reply2->deleteLater();
         return;
     }
     QByteArray responseData2 = reply2->readAll();
     QJsonDocument doc2 = QJsonDocument::fromJson(responseData2);
     QJsonArray systemimagestable = doc2.array();
     data["system_images"] = systemimagestable.toVariantList();
-    // reply2->deleteLater();
+    reply2->deleteLater();
 
     // user contribs
 
@@ -341,7 +345,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
                                   Q_ARG(QString, "Failed to Fetch Current System Contributions"),
                                   Q_ARG(QString, "Fetching Current System Contributions"),
                                   Q_ARG(QString, "Timed out"));
-        // reply3->deleteLater();
+        reply3->deleteLater();
         return;
     }
     if(reply3->error() != QNetworkReply::NoError) {
@@ -355,7 +359,7 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
                                   Q_ARG(QString, "Failed to Fetch Current System Images"),
                                   Q_ARG(QString, "Fetching Current System Images"),
                                   Q_ARG(QString, errorMsg3));
-        // reply3->deleteLater();
+        reply3->deleteLater();
         return;
     }
     QByteArray responseData3 = reply3->readAll();
@@ -367,7 +371,53 @@ void SupabaseTask::FetchSingleSystem() // fix empty data
         QJsonObject row = contribs[0].toObject();
         data["user_contributions"] = row.toVariantMap();
     }
-    // reply3->deleteLater();
+    reply3->deleteLater();
+
+    // gec
+
+    QString endpoint4 = "https://edastro.com/gec/json/id64/" + m_params["id64"].toString();
+    QUrl url4(endpoint4);
+
+    QNetworkRequest request4(url4);
+    request4.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request4.setRawHeader("User-Agent", "ExplorariumApp");
+    QNetworkReply *reply4 = manager.get(request4);
+    QObject::connect(reply4, &QNetworkReply::finished, &loop4, &QEventLoop::quit);
+    QObject::connect(&timer4, &QTimer::timeout, &loop4, &QEventLoop::quit);
+    timer4.start(60000);
+    loop4.exec();
+    timer4.stop();
+    reply4->deleteLater();
+    if (!reply4->isFinished()) {
+        reply4->abort();
+        QMetaObject::invokeMethod(m_client, "onError",
+                                  Qt::QueuedConnection,
+                                  Q_ARG(QString, "Failed to Fetch GEC Data"),
+                                  Q_ARG(QString, "Fetching GEC Data"),
+                                  Q_ARG(QString, "Timed out"));
+        return;
+    }
+    if(reply4->error() != QNetworkReply::NoError) {
+        QByteArray errorData4 = reply4->readAll();
+        QJsonDocument errorDoc4 = QJsonDocument::fromJson(errorData4);
+        QString detailedError4 = errorDoc4.object().value("message").toString();
+        QString errorMsg4 = detailedError4.isEmpty() ? reply4->errorString() : detailedError4;
+        qWarning() << "Error: " << errorMsg4;
+        QMetaObject::invokeMethod(m_client, "onError",
+                                  Qt::QueuedConnection,
+                                  Q_ARG(QString, "Failed to Fetch GEC Data"),
+                                  Q_ARG(QString, "Fetching GEC Data"),
+                                  Q_ARG(QString, errorMsg4));
+        return;
+    }
+    QByteArray responseData4 = reply4->readAll();
+    QJsonDocument doc4 = QJsonDocument::fromJson(responseData4);
+    QJsonObject gecData = doc4.object();
+    if (gecData.isEmpty()) {
+        data["gec_url"] = QString();
+    } else {
+        data["gec_url"] = gecData.value("poiUrl").toString();
+    }
     QMetaObject::invokeMethod(m_client, "onSingleSystemLoaded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantMap, data));
@@ -400,7 +450,7 @@ void SupabaseTask::FetchDbMetaData()
                                   Q_ARG(QString, "Failed to Fetch Database Status"),
                                   Q_ARG(QString, "Fetching Database Status"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     if(reply->error() != QNetworkReply::NoError) {
@@ -414,7 +464,7 @@ void SupabaseTask::FetchDbMetaData()
                                   Q_ARG(QString, "Failed to Fetch Database Status"),
                                   Q_ARG(QString, "Fetching Database Status"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -426,7 +476,7 @@ void SupabaseTask::FetchDbMetaData()
     QVariantList dbData;
     dbData.append(newThisWeek);
     dbData.append(lastUpdated);
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onDbLoaded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantList, dbData));
@@ -459,7 +509,7 @@ void SupabaseTask::FetchContributions()
                                   Q_ARG(QString, "Failed to Fetch Contributions"),
                                   Q_ARG(QString, "Fetching Contributions"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     if(reply->error() != QNetworkReply::NoError) {
@@ -473,7 +523,7 @@ void SupabaseTask::FetchContributions()
                                   Q_ARG(QString, "Failed to Fetch Contributions"),
                                   Q_ARG(QString, "Fetching Contributions"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -481,7 +531,7 @@ void SupabaseTask::FetchContributions()
     QJsonArray array = doc.array();
     QVariantList fulldata = array.toVariantList();
     qInfo() << "Fetched" << fulldata.size() <<  "contributions";
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onContributionsLoaded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantList, fulldata));
@@ -515,7 +565,7 @@ void SupabaseTask::FetchShipBuild()
                                   Q_ARG(QString, "Failed to Fetch Ship Build"),
                                   Q_ARG(QString, "Fetching Ship Build"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     if(reply->error() != QNetworkReply::NoError) {
@@ -529,7 +579,7 @@ void SupabaseTask::FetchShipBuild()
                                   Q_ARG(QString, "Failed to Fetch Ship Build"),
                                   Q_ARG(QString, "Fetching Ship Build"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -565,7 +615,7 @@ void SupabaseTask::FetchSystemImages()
                                   Q_ARG(QString, "Failed to Fetch System Images"),
                                   Q_ARG(QString, "Fetching System Images"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     if(reply->error() != QNetworkReply::NoError) {
@@ -579,7 +629,7 @@ void SupabaseTask::FetchSystemImages()
                                   Q_ARG(QString, "Failed to Fetch System Images"),
                                   Q_ARG(QString, "Fetching System Images"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -587,7 +637,7 @@ void SupabaseTask::FetchSystemImages()
     QJsonArray array = doc.array();
     QVariantList fulldata = array.toVariantList();
     qInfo() << "Fetched" << fulldata.size() <<  "images";
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onImagesLoaded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantList, fulldata));
@@ -600,16 +650,16 @@ void SupabaseTask::ClaimSystem()
     QNetworkAccessManager manager;
     timer.setSingleShot(true);
 
-    QString endpoint = m_url + "/rest/v1/claims?select=*";
+    QString endpoint = m_url + "/rest/v1/claims?on_conflict=system_name&select=*";
     QUrl url = QUrl(endpoint);
 
     QNetworkRequest request(url);
     request.setRawHeader("apikey", m_key.toUtf8());
     request.setRawHeader("Authorization", ("Bearer " + m_key).toUtf8());
     request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
-    request.setRawHeader("Prefer", "return=representation");
+    request.setRawHeader("Prefer", "resolution=merge-duplicates,return=representation");
+    request.setRawHeader("Cmdr-Name", m_params["cmdr_name"].toString().toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
     QJsonObject requestParams = QJsonObject::fromVariantMap(m_params);
     QJsonDocument doc(requestParams);
     QByteArray data = doc.toJson();
@@ -626,7 +676,7 @@ void SupabaseTask::ClaimSystem()
                                   Q_ARG(QString, "Could not Claim"),
                                   Q_ARG(QString, "Claiming a system"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     };
     if(reply->error() != QNetworkReply::NoError) {
@@ -640,7 +690,7 @@ void SupabaseTask::ClaimSystem()
                                   Q_ARG(QString, "Could Not Claim"),
                                   Q_ARG(QString, "Claiming a system"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -657,7 +707,7 @@ void SupabaseTask::ClaimSystem()
         }
     }
     qInfo() << "Fetched" << fulldata.size() <<  "images";
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onClaimSuccess",
                               Qt::QueuedConnection,
                               Q_ARG(QString, systemName),
@@ -678,9 +728,13 @@ void SupabaseTask::UnclaimSystem()
     QNetworkRequest request(url);
     request.setRawHeader("apikey", m_key.toUtf8());
     request.setRawHeader("Authorization", ("Bearer " + m_key).toUtf8());
+    request.setRawHeader("Cmdr-Name", m_params["cmdr_name"].toString().toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
-
-    QNetworkReply *reply = manager.deleteResource(request);
+    QJsonObject requestParams = QJsonObject::fromVariantMap(m_params);
+    QJsonDocument doc(requestParams);
+    QByteArray data = doc.toJson();
+    QNetworkReply *reply = manager.sendCustomRequest(request, "PATCH", data);
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
     timer.start(60000);
@@ -693,7 +747,7 @@ void SupabaseTask::UnclaimSystem()
                                   Q_ARG(QString, "Could not Unclaim"),
                                   Q_ARG(QString, "Unclaiming a System"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -709,10 +763,10 @@ void SupabaseTask::UnclaimSystem()
                                   Q_ARG(QString, "Could Not Unclaim"),
                                   Q_ARG(QString, "Unclaiming a System"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onUnclaimSuccess",
                               Qt::QueuedConnection,
                               Q_ARG(QString, m_params["system_name"].toString()));
@@ -752,7 +806,7 @@ void SupabaseTask::AddContributions()
                                   Q_ARG(QString, "Could Not Add Contribution"),
                                   Q_ARG(QString, "Adding a contribution"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -768,7 +822,7 @@ void SupabaseTask::AddContributions()
                                   Q_ARG(QString, "Could Not Add Contribution"),
                                   Q_ARG(QString, "Adding a contribution"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -780,7 +834,7 @@ void SupabaseTask::AddContributions()
         confirmedData = resultList.first().toMap();
     }
 
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onContributionsAdded",
                               Qt::QueuedConnection,
                               Q_ARG(QVariantMap, confirmedData));
@@ -820,7 +874,7 @@ void SupabaseTask::UploadImage()
                                   Q_ARG(QString, "Could Not Upload Image"),
                                   Q_ARG(QString, "Uploading an image"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -835,7 +889,7 @@ void SupabaseTask::UploadImage()
                                   Q_ARG(QString, "Could Not Upload Image"),
                                   Q_ARG(QString, "Uploading an image"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -851,7 +905,7 @@ void SupabaseTask::UploadImage()
     } else {
         qWarning() << "Database returned an empty array on successful image save.";
     }
-    // reply->deleteLater();
+    reply->deleteLater();
 }
 
 void SupabaseTask::RemoveImage()
@@ -889,7 +943,7 @@ void SupabaseTask::RemoveImage()
                                   Q_ARG(QString, "Could Not Remove Image"),
                                   Q_ARG(QString, "Removing an image"),
                                   Q_ARG(QString, "Timed out"));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
 
@@ -904,7 +958,7 @@ void SupabaseTask::RemoveImage()
                                   Q_ARG(QString, "Could Not Remove Image"),
                                   Q_ARG(QString, "Removing an image"),
                                   Q_ARG(QString, errorMsg));
-        // reply->deleteLater();
+        reply->deleteLater();
         return;
     }
     QByteArray responseData = reply->readAll();
@@ -917,7 +971,7 @@ void SupabaseTask::RemoveImage()
     } else {
         qInfo() << "Successfully deleted row(s):" << arr.size();
     }
-    // reply->deleteLater();
+    reply->deleteLater();
     QMetaObject::invokeMethod(m_client, "onImageRemoved",
                               Qt::QueuedConnection,
                               Q_ARG(QString, imageUrl));

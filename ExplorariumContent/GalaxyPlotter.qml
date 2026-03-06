@@ -904,7 +904,7 @@ Rectangle {
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: true
                 clip: true
-                cacheBuffer: width * 2
+                cacheBuffer: Math.max(0, width * 2)
                 reuseItems: true
                 model: SpanshPlotter.route
 

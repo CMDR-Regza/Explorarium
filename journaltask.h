@@ -8,12 +8,14 @@
 class JournalTask : public QRunnable
 {
 public:
-    JournalTask(JournalManager *manager, QString currentFile, qint64 filePosition);
+    JournalTask(JournalManager *manager, QString currentFile, qint64 filePosition, QVariantMap params);
     ~JournalTask() { qInfo() << this << "Destroyed"; }
     void run() override;
 private:
     JournalManager *m_manager;
+    QVariantMap m_params;
     QVariantMap ReadJournalData();
+    int displayValue();
     QString m_currentFile;
     qint64 m_filePosition;
 };
