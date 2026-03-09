@@ -1,0 +1,15 @@
+build/
+build-*/
+*.user
+*.user.*
+.qtcreator/
+*.qmlproject.qtds.*
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+*.exe
+*.dll
+*.app
+*.o
+*.obj
