@@ -1,13 +1,17 @@
+# CMake build files
 build/
 build-*/
+# Qt Creator settings and cache
 *.user
 *.user.*
 .qtcreator/
 *.qmlproject.qtds.*
+# OS files
 .DS_Store
 .DS_Store?
 Thumbs.db
 ehthumbs.db
+# Compiled executable files
 *.exe
 *.dll
 *.app
